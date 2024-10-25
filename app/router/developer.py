@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.utils import authenticate_user, create_access_token, create_refresh_token, create_session, verify_session, get_user_by_id, decode_token, JWTBearer, get_current_user
+from app.utils import authenticate_user, create_access_token, create_refresh_token, create_session, verify_session, get_user_by_id, decode_token, JWTBearer, get_current_user, decode_refresh_token
 from app.schemas import DeveloperLoginSchema, GetDeveloperDetailsSchema
 from app.models import User
 from app.database import get_db
@@ -34,11 +34,16 @@ def get_user_endpoint(
     return current_user
 
 @router.post("/token/refresh/")
-def refresh_token_endpoint(
+async def refresh_token_endpoint(
+    request: Request,
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
 ):
-    payload = decode_token(token)
+    data = await request.json()
+    token = data.get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Token is required")
+
+    payload = decode_refresh_token(token)
     if not payload:
         raise HTTPException(
             status_code=401,

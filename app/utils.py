@@ -140,6 +140,14 @@ def decode_token(token: str):
         return None
 
 
+def decode_refresh_token(token: str):
+    try:
+        payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except InvalidTokenError:
+        return None
+
+
 def generate_authorization_code(client_id: str, redirect_uri: str, scope: str, state: str):
     authorization_code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
     return authorization_code

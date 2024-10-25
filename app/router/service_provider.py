@@ -28,7 +28,6 @@ def read_service_providers(current_user: User = Depends(get_current_user), db: S
         )
 
         scope_strings = [scope.scope for scope in client_scopes]
-        print("Scopes:", scope_strings)
 
         service_provider_data = {
             **service_provider.__dict__,
