@@ -8,7 +8,7 @@ from app.models import ServiceProvider, User, ClientScope, Scope
 from app.schemas import ServiceProviderSchema, SessionSchema, GetServiceProviderDetailsSchema
 from app.config import Settings
 from app.database import get_db
-from app.utils import generate_authorization_code, verify_session, get_current_user
+from app.utils import generate_authorization_code, verify_session, get_current_user, user_consent
 from fastapi.responses import RedirectResponse, JSONResponse
 
 router = APIRouter()
@@ -74,6 +74,8 @@ def authorize_service_provider(form_data: SessionSchema, request: Request = Requ
         print("Session not Valid. Redirecting to:", redirect_uri)
         return RedirectResponse(redirect_uri, status_code=303)
 
+    user_consent(db, form_data, request)
+    
     service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
     if not service_provider:
         raise HTTPException(status_code=400, detail='Invalid client_id')

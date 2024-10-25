@@ -14,7 +14,7 @@ from app.models import User, VerificationCode, UserSession, ServiceProvider
 from app.schemas import UserSchema, VerifyCode, ResendCode, LoginSchema
 from app.crud import create_user, get_all_users, resend_verification_code
 from app.config import Settings
-from app.utils import authenticate_user, verify_session
+from app.utils import authenticate_user, verify_session, verify_consent
 
 router = APIRouter()
 
@@ -54,8 +54,13 @@ async def session_verification(
 
     if service_provider.redirect_url != form_data.redirect_uri:
         raise HTTPException(status_code=400, detail='Invalid redirect_uri')
+    
+    if verify_consent(db, form_data, request):
+        # TODO: Add authorization_code in the params
+        redirect_url = form_data.redirect_uri
+    else : 
 
-    redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_uri={quote(form_data.redirect_uri, safe='')}"
+        redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_uri={quote(form_data.redirect_uri, safe='')}"
 
     response = RedirectResponse(redirect_url, status_code=302)
 

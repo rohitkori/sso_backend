@@ -122,3 +122,12 @@ class ClientScope(Base):
 
     service_provider_id = Column(Integer, ForeignKey("service_providers.id"), primary_key=True, index=True)
     scope_id = Column(Integer, ForeignKey("scopes.id"), primary_key=True, index=True)
+
+
+class UserConsent(Base):
+    __tablename__ = "user_consents"
+    
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True, index=True)
+    service_provider_id = Column(Integer, ForeignKey("service_providers.id"), primary_key=True, index=True)
+    scope_id = Column(Integer, ForeignKey("scopes.id"), primary_key=True, index=True)
+    consent_time = Column(DateTime, default=datetime.now())
