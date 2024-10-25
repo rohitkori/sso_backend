@@ -7,7 +7,7 @@ from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta
 from typing import Union, Optional
 from app.config import Settings
-from app.router.user import get_db
+from app.database import get_db
 from app.models import User, UserSession, ServiceProvider
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -93,18 +93,12 @@ def get_user_by_id(db, user_id: int):
     return user
 
 
-def authenticate_user(db, email: str, password: str, client_id: str):
+def authenticate_user(db, email: str, password: str):
     user = get_user(db, email)
     if not user:
         return False
     if not verify_password(password, user.password):
-        return False
-    if client_id:
-        service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
-        if not service_provider:
-            return False
-        # if not service_provider.is_verified:
-        #     return False            
+        return False           
     return user
 
 
