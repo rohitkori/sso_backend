@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.utils import authenticate_user, create_access_token, create_refresh_token, create_session, verify_session, get_user_by_id, decode_token, JWTBearer, get_current_user, decode_refresh_token
-from app.schemas import DeveloperLoginSchema, GetDeveloperDetailsSchema
-from app.models import User
+from app.schemas import DeveloperLoginSchema, GetDeveloperDetailsSchema, GetDeveloperKeysSchema, GetAllScopesSchema
+from app.models import User, ServiceProvider, Scope, ClientScope
 from app.database import get_db
+from typing import List
 
 router = APIRouter()
 
@@ -69,3 +70,33 @@ async def refresh_token_endpoint(
         "refresh_token": token,
         "token_type": "bearer"
     }
+
+
+@router.get("/keys/", response_model=List[GetDeveloperKeysSchema])
+def read_service_providers(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    service_providers = db.query(ServiceProvider).filter(ServiceProvider.developer_id == current_user.id).order_by(ServiceProvider.created_at).all()
+    service_providers_with_scopes = []
+
+    for service_provider in service_providers:
+        client_scopes = (
+            db.query(Scope.scope)
+            .join(ClientScope, ClientScope.scope_id == Scope.id)
+            .filter(ClientScope.service_provider_id == service_provider.id)
+            .all()
+        )
+
+        scope_strings = [scope.scope for scope in client_scopes]
+
+        service_provider_data = {
+            **service_provider.__dict__,
+            "scopes": scope_strings       
+        }
+        service_providers_with_scopes.append(service_provider_data)
+
+    return service_providers_with_scopes
+
+
+@router.get("/available-scopes/", response_model=List[GetAllScopesSchema])
+def get_available_scopes(db: Session = Depends(get_db)):
+    scopes = db.query(Scope).all()
+    return scopes
