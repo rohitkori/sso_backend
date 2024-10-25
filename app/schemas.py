@@ -15,11 +15,11 @@ class UserSchema(BaseModel):
     phone_number: str
 
 
-class ServiceProviderSchema(BaseModel):
+class CreateServiceProviderSchema(BaseModel):
     name: str
     developer_id: int
     redirect_url: str
-    scope: List[int]
+    scopes: List[str]
 
 
 class GetDeveloperKeysSchema(BaseModel):
