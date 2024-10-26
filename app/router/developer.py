@@ -100,3 +100,23 @@ def read_service_providers(current_user: User = Depends(get_current_user), db: S
 def get_available_scopes(db: Session = Depends(get_db)):
     scopes = db.query(Scope).all()
     return scopes
+
+@router.delete("/delete-service-providers/")
+def delete_service_providers(
+    service_provider_ids: List[int],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    service_providers = db.query(ServiceProvider).filter(
+        ServiceProvider.id.in_(service_provider_ids),
+        ServiceProvider.developer_id == current_user.id
+    ).all()
+
+    if not service_providers:
+        raise HTTPException(status_code=404, detail="No matching service providers found")
+
+    for service_provider in service_providers:
+        db.delete(service_provider)
+
+    db.commit()
+    return JSONResponse(status_code=200, content={"message": f"{len(service_providers)} service providers deleted"})
