@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-from typing import List
 from urllib.parse import quote
 
 from app.models import ServiceProvider, User, ClientScope, Scope
-from app.schemas import ServiceProviderSchema, SessionSchema, GetServiceProviderDetailsSchema
+from app.schemas import CreateServiceProviderSchema, SessionSchema
 from app.config import Settings
 from app.database import get_db
 from app.utils import generate_authorization_code, verify_session, get_current_user, user_consent
@@ -14,39 +13,16 @@ from fastapi.responses import RedirectResponse, JSONResponse
 router = APIRouter()
 
 
-@router.get("/credentials", response_model=List[GetServiceProviderDetailsSchema])
-def read_service_providers(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    service_providers = db.query(ServiceProvider).filter(ServiceProvider.developer_id == current_user.id).order_by(ServiceProvider.created_at).all()
-    service_providers_with_scopes = []
-
-    for service_provider in service_providers:
-        client_scopes = (
-            db.query(Scope.scope)
-            .join(ClientScope, ClientScope.scope_id == Scope.id)
-            .filter(ClientScope.service_provider_id == service_provider.id)
-            .all()
-        )
-
-        scope_strings = [scope.scope for scope in client_scopes]
-        print("Scopes:", scope_strings)
-
-        service_provider_data = {
-            **service_provider.__dict__,
-            "scopes": scope_strings       
-        }
-        service_providers_with_scopes.append(service_provider_data)
-
-    return service_providers_with_scopes
-
-
 @router.post("/create/")
-def create_service_provider(service_provider: ServiceProviderSchema, db: Session = Depends(get_db)):
+def create_service_provider(service_provider: CreateServiceProviderSchema, db: Session = Depends(get_db)):
     db_service_provider = db.query(ServiceProvider).filter(
-        (ServiceProvider.name == service_provider.name) |
-        (ServiceProvider.redirect_url == service_provider.redirect_url)
+        (ServiceProvider.name == service_provider.name) &
+        (ServiceProvider.developer_id == service_provider.developer_id)
     ).first()
+    print("db_service_provider", db_service_provider)
     if db_service_provider:
-        raise HTTPException(status_code=400, detail='Service Provider already registered')
+        raise HTTPException(status_code=400, detail='Service Provider already registered with this name')
+
     db_service_provider = ServiceProvider(
         name=service_provider.name,
         developer_id=service_provider.developer_id,
@@ -56,8 +32,11 @@ def create_service_provider(service_provider: ServiceProviderSchema, db: Session
     db.commit()
     db.refresh(db_service_provider)
 
-    for scopeId in service_provider.scope:
-        db_client_scope = ClientScope(service_provider_id=db_service_provider.id, scope_id=scopeId)
+    for scopeName in service_provider.scopes:
+        scope = db.query(Scope).filter(Scope.scope == scopeName).first()
+        if not scope:
+            pass
+        db_client_scope = ClientScope(service_provider_id=db_service_provider.id, scope_id=scope.id)
         db.add(db_client_scope)
     db.commit()
 

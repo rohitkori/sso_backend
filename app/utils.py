@@ -93,18 +93,12 @@ def get_user_by_id(db, user_id: int):
     return user
 
 
-def authenticate_user(db, email: str, password: str, client_id: str):
+def authenticate_user(db, email: str, password: str):
     user = get_user(db, email)
     if not user:
         return False
     if not verify_password(password, user.password):
-        return False
-    if client_id:
-        service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
-        if not service_provider:
-            return False
-        # if not service_provider.is_verified:
-        #     return False            
+        return False           
     return user
 
 
@@ -135,6 +129,14 @@ def create_refresh_token(data: dict, expires_delta: Union[timedelta, None] = Non
 def decode_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except InvalidTokenError:
+        return None
+
+
+def decode_refresh_token(token: str):
+    try:
+        payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except InvalidTokenError:
         return None

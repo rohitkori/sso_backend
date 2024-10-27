@@ -71,13 +71,19 @@ async def session_verification(
 def login_endpoint(
     form_data: LoginSchema, db: Session = Depends(get_db)
 ) -> Token:
-    user = authenticate_user(db, form_data.email, form_data.password, form_data.client_id)
+    user = authenticate_user(db, form_data.email, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if form_data.client_id:
+        service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
+        if not service_provider:
+            raise HTTPException(status_code=400, detail='Invalid client_id')
+
     user_session = UserSession(user_id=user.id)
     db.add(user_session)
     db.commit()

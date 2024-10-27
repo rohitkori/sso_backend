@@ -15,14 +15,14 @@ class UserSchema(BaseModel):
     phone_number: str
 
 
-class ServiceProviderSchema(BaseModel):
+class CreateServiceProviderSchema(BaseModel):
     name: str
     developer_id: int
     redirect_url: str
-    scope: List[int]
+    scopes: List[str]
 
 
-class GetServiceProviderDetailsSchema(BaseModel):
+class GetDeveloperKeysSchema(BaseModel):
     id: int
     name: str
     created_at: datetime
@@ -87,3 +87,7 @@ class GetDeveloperDetailsSchema(BaseModel):
     email: str
     phone_number: str
     is_verified: bool
+
+class GetAllScopesSchema(BaseModel):
+    id: int
+    scope: str
