@@ -5,6 +5,7 @@ import random
 import string
 from datetime import datetime, timedelta
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql.schema import PrimaryKeyConstraint
 
 class User(Base):
     __tablename__ = "users"
@@ -122,7 +123,10 @@ class ClientScope(Base):
 
     service_provider_id = Column(Integer, ForeignKey("service_providers.id"), primary_key=True, index=True)
     scope_id = Column(Integer, ForeignKey("scopes.id"), primary_key=True, index=True)
-
+    
+    __table_args__ = (
+        PrimaryKeyConstraint('service_provider_id', 'scope_id'),
+    )
 
 class UserConsent(Base):
     __tablename__ = "user_consents"
@@ -131,3 +135,7 @@ class UserConsent(Base):
     service_provider_id = Column(Integer, ForeignKey("service_providers.id"), primary_key=True, index=True)
     scope_id = Column(Integer, ForeignKey("scopes.id"), primary_key=True, index=True)
     consent_time = Column(DateTime, default=datetime.now())
+
+    __table_args__ = (
+        PrimaryKeyConstraint('user_id', 'service_provider_id', 'scope_id'),
+    )

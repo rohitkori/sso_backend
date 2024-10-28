@@ -182,8 +182,19 @@ def user_consent(db, form_data,  request: Request):
     
     for scp in scopes:
         scope = db.query(Scope).filter(Scope.scope == scp).first()
-        if scope and not db.query(UserConsent).filter(UserConsent.user_id == session.user_id and UserConsent.service_provider_id == service_provider.id and UserConsent.scope_id == scope.id).first():
-            consent = UserConsent(user_id=session.user_id, service_provider_id=service_provider.id, scope_id=scope.id)
+        
+        existing_consent = db.query(UserConsent).filter(
+            (UserConsent.user_id == session.user_id) &
+            (UserConsent.service_provider_id == service_provider.id) &
+            (UserConsent.scope_id == scope.id)
+        ).first()
+        
+        if scope and not existing_consent:
+            consent = UserConsent(
+                user_id=session.user_id,
+                service_provider_id=service_provider.id,
+                scope_id=scope.id
+            )
             db.add(consent)
             db.commit() 
             print("consent:", consent)   
