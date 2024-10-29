@@ -128,6 +128,7 @@ class ClientScope(Base):
         PrimaryKeyConstraint('service_provider_id', 'scope_id'),
     )
 
+
 class UserConsent(Base):
     __tablename__ = "user_consents"
     
@@ -139,3 +140,25 @@ class UserConsent(Base):
     __table_args__ = (
         PrimaryKeyConstraint('user_id', 'service_provider_id', 'scope_id'),
     )
+
+
+class AuthorizationCode(Base):
+    __tablename__ = "authorization_codes"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    code = Column(String(50), nullable=False, unique=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    service_provider_id = Column(Integer, ForeignKey("service_providers.id"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    is_used = Column(Boolean, default=False)
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        if not self.code:
+            self.code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
+            session = kwargs.get('session')
+            if session:
+                while session.query(self.__class__).filter_by(code=self.code).first() is not None:
+                    self.code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
+            self.expires_at = datetime.now() + timedelta(minutes=15)

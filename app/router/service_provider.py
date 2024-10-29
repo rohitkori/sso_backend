@@ -62,7 +62,7 @@ def authorize_service_provider(form_data: SessionSchema, request: Request = Requ
     if form_data.response_type != 'code':
         raise HTTPException(status_code=400, detail='Unsupported response_type')
 
-    authorization_code = generate_authorization_code(form_data.client_id, form_data.redirect_uri, form_data.scope, form_data.state)
+    authorization_code = generate_authorization_code(db, request, form_data.client_id)
 
     if service_provider.redirect_url != form_data.redirect_uri:
         raise HTTPException(status_code=400, detail='Invalid redirect_uri')
