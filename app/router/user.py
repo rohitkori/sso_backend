@@ -55,6 +55,7 @@ async def session_verification(
     if service_provider.redirect_url != form_data.redirect_uri:
         raise HTTPException(status_code=400, detail='Invalid redirect_uri')
 
+    # here check if already consent is given then redirect to redirect_uri else do below
     redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_uri={quote(form_data.redirect_uri, safe='')}"
 
     response = RedirectResponse(redirect_url, status_code=302)

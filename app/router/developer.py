@@ -14,7 +14,7 @@ def login_endpoint(
     user: DeveloperLoginSchema,
     db: Session = Depends(get_db)
 ):
-    user = authenticate_user(db, user.email, user.password, None)
+    user = authenticate_user(db, user.email, user.password)
     if not user:
         raise HTTPException(status_code=400, detail='Invalid credentials')
     

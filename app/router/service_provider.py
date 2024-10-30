@@ -12,7 +12,6 @@ from fastapi.responses import RedirectResponse, JSONResponse
 
 router = APIRouter()
 
-
 @router.post("/create/")
 def create_service_provider(service_provider: CreateServiceProviderSchema, db: Session = Depends(get_db)):
     db_service_provider = db.query(ServiceProvider).filter(
