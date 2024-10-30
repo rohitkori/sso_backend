@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Union, Optional
 from app.config import Settings
 from app.database import get_db
-from app.models import User, UserSession, ServiceProvider
+from app.models import User, UserSession, ServiceProvider, UserConsent, Scope, AuthorizationCode
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 import random
@@ -142,9 +142,15 @@ def decode_refresh_token(token: str):
         return None
 
 
-def generate_authorization_code(client_id: str, redirect_uri: str, scope: str, state: str):
-    authorization_code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
-    return authorization_code
+def generate_authorization_code(db, request: Request, client_id: str):
+    session_id = request.headers.get("session_id")
+    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
+    authorization_code_entry = AuthorizationCode(user_id = session.user_id, service_provider_id = service_provider.id)
+    db.add(authorization_code_entry)
+    db.commit()
+    
+    return authorization_code_entry.code
 
 
 def create_session(db, email: str):
@@ -165,4 +171,56 @@ def verify_session(db, request: Request):
     session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
     if not session or session.session_expiry < datetime.now() or not session.is_active:
         return False
+    return True
+
+
+def user_consent(db, form_data,  request: Request):
+    session_id = request.headers.get("session_id")
+    
+    if not session_id:
+        return False
+    
+    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
+    scopes = form_data.scope.split(" ")
+    
+    print("scopes:", scopes)
+    
+    for scp in scopes:
+        scope = db.query(Scope).filter(Scope.scope == scp).first()
+        
+        existing_consent = db.query(UserConsent).filter(
+            (UserConsent.user_id == session.user_id) &
+            (UserConsent.service_provider_id == service_provider.id) &
+            (UserConsent.scope_id == scope.id)
+        ).first()
+        
+        if scope and not existing_consent:
+            consent = UserConsent(
+                user_id=session.user_id,
+                service_provider_id=service_provider.id,
+                scope_id=scope.id
+            )
+            db.add(consent)
+            db.commit() 
+            print("consent:", consent)   
+        
+    return True
+
+
+def verify_consent(db, form_data, request: Request):
+    session_id = request.headers.get("session_id")
+    
+    if not session_id:
+        return False
+    
+    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
+    user = db.query(User).filter(User.id == session.user_id).first()
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
+    scopes = form_data.scope.split(" ")
+    
+    for scope in scopes:
+        if not db.query(UserConsent).filter(UserConsent.user_id == user.id and UserConsent.service_provider_id == service_provider.id and UserConsent.scope_id == scope.id).first():
+            return False
+        
     return True
