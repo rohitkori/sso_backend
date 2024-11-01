@@ -91,3 +91,9 @@ class GetDeveloperDetailsSchema(BaseModel):
 class GetAllScopesSchema(BaseModel):
     id: int
     scope: str
+
+
+class PostTokenSchema(BaseModel):
+    auth_code: str
+    grant_type: str
+    redirect_uri: str
