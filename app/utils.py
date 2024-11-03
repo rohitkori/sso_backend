@@ -224,3 +224,12 @@ def verify_consent(db, form_data, request: Request):
             return False
         
     return True
+
+def get_scopes_with_spaces(service_provider_id: int, db: Session):
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.id == service_provider_id).first()
+    
+    if not service_provider:
+        return None
+
+    scopes_str = " ".join(scope.scope for scope in service_provider.scopes)
+    return scopes_str

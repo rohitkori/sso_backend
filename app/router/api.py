@@ -45,7 +45,7 @@ def token_endpoint(form_data: PostTokenSchema, request: Request, db: Session = D
             "access_token": access_token,
             "refresh_token": refresh_token,
         }
-        
+
         return JSONResponse(content=response, status_code=200)
     else:
         raise HTTPException(status_code=400, detail="Invalid Authorization header")

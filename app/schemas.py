@@ -96,4 +96,4 @@ class GetAllScopesSchema(BaseModel):
 class PostTokenSchema(BaseModel):
     auth_code: str
     grant_type: str
-    redirect_uri: str
+    redirect_url: str

@@ -14,7 +14,7 @@ from app.models import User, VerificationCode, UserSession, ServiceProvider
 from app.schemas import UserSchema, VerifyCode, ResendCode, LoginSchema
 from app.crud import create_user, get_all_users, resend_verification_code
 from app.config import Settings
-from app.utils import authenticate_user, verify_session, verify_consent, generate_authorization_code
+from app.utils import authenticate_user, verify_session, verify_consent, generate_authorization_code, get_scopes_with_spaces
 
 router = APIRouter()
 
@@ -78,20 +78,21 @@ def login_endpoint(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if form_data.client_id:
-        service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
-        if not service_provider:
-            raise HTTPException(status_code=400, detail='Invalid client_id')
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
+    if not service_provider:
+        raise HTTPException(status_code=400, detail='Invalid client_id')
 
     user_session = UserSession(user_id=user.id)
     db.add(user_session)
     db.commit()
 
+    scopes = get_scopes_with_spaces(service_provider.id, db)
 
-    response_message = {'response_type': form_data.response_type, 
-                        'client_id': form_data.client_id, 
+    response_message = {'response_type': 'code', 
+                        'client_id': service_provider.client_id, 
                         'state': form_data.state, 
-                        'scope': form_data.scope, 
+                        'scope': scopes,
+                        'redirect_uri': service_provider.redirect_url,
                         'session_id': user_session.session_id}
     
     response = JSONResponse(content=response_message, status_code=200)
