@@ -14,7 +14,7 @@ from app.models import User, VerificationCode, UserSession, ServiceProvider
 from app.schemas import UserSchema, VerifyCode, ResendCode, LoginSchema
 from app.crud import create_user, get_all_users, resend_verification_code
 from app.config import Settings
-from app.utils import authenticate_user, verify_session, verify_consent, generate_authorization_code, get_scopes_with_spaces
+from app.utils import authenticate_user, verify_session, verify_consent, generate_authorization_code, get_scopes_with_spaces, get_current_user, get_current_service_provider
 
 router = APIRouter()
 
@@ -54,9 +54,9 @@ async def session_verification(
 
     if service_provider.redirect_url != form_data.redirect_url:
         raise HTTPException(status_code=400, detail='Invalid redirect_url')
-    
-    if verify_consent(db, form_data, request):
-        authorization_code = generate_authorization_code(db, request, form_data.client_id)
+
+    if verify_consent(db, form_data.client_id, session.user_id):
+        authorization_code = generate_authorization_code(db, session.user_id, form_data.client_id)
         redirect_url = form_data.redirect_url + f"?auth_code={authorization_code}&state={form_data.state}"
     else :
         scope = get_scopes_with_spaces(service_provider.id, db)
@@ -83,20 +83,28 @@ def login_endpoint(
     if not service_provider:
         raise HTTPException(status_code=400, detail='Invalid client_id')
 
+    if service_provider.redirect_url != form_data.redirect_url:
+        raise HTTPException(status_code=400, detail='Invalid redirect_url')
+
     user_session = UserSession(user_id=user.id)
     db.add(user_session)
     db.commit()
 
-    scopes = get_scopes_with_spaces(service_provider.id, db)
+    if verify_consent(db, form_data.client_id, user.id):
+        authorization_code = generate_authorization_code(db, user.id, form_data.client_id)
+        redirect_url = form_data.redirect_url + f"?auth_code={authorization_code}&state={form_data.state}"
+        return JSONResponse({"redirect_url": redirect_url, "should_redirect": True})
+    else :
+        scopes = get_scopes_with_spaces(service_provider.id, db)
+        response_message = {'response_type': 'code',
+                            'client_id': service_provider.client_id, 
+                            'state': form_data.state, 
+                            'scope': scopes,
+                            'redirect_url': service_provider.redirect_url,
+                            'session_id': user_session.session_id,
+                            "should_redirect": False}
 
-    response_message = {'response_type': 'code', 
-                        'client_id': service_provider.client_id, 
-                        'state': form_data.state, 
-                        'scope': scopes,
-                        'redirect_url': service_provider.redirect_url,
-                        'session_id': user_session.session_id}
-    
-    response = JSONResponse(content=response_message, status_code=200)
+        response = JSONResponse(content=response_message, status_code=200)
     return response
 
 @router.post("/logout")
@@ -127,7 +135,6 @@ def verify_code(user_code: VerifyCode, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Verification code has expired.")
 
     verification_code.is_verified = True
-    # Should we delete all verification code with this email here? Because now user is verified.
     db.commit()
 
     user = db.query(User).filter(User.email == user_code.email).first()
@@ -143,3 +150,22 @@ def verify_code(user_code: VerifyCode, db: Session = Depends(get_db)):
 def resend_verify_code(user_email: ResendCode, db: Session = Depends(get_db)):
     user = resend_verification_code(db, user_email.email)
     return user
+
+
+@router.get("/me/")
+def read_users_me(current_user: User = Depends(get_current_user), current_service_provider: ServiceProvider = Depends(get_current_service_provider), db: Session = Depends(get_db)):
+    scopes = get_scopes_with_spaces(current_service_provider.id, db).split(" ")
+    response_message = {}
+    for scope in scopes:
+        if scope == "name":
+            response_message["name"] = current_user.first_name + " " + current_user.last_name
+        elif scope == "email":
+            response_message["email"] = current_user.email
+        elif scope == "roll_no":
+            response_message["roll_no"] = current_user.roll_no
+        elif scope == "phone":
+            response_message["phone"] = current_user.phone_number
+        else:
+            raise HTTPException(status_code=400, detail="Invalid scope")
+    response = JSONResponse(content=response_message, status_code=200)
+    return response

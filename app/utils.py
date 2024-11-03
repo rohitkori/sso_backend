@@ -48,6 +48,31 @@ class JWTBearer(HTTPBearer):
             return False
 
 
+def get_current_service_provider(db: Session = Depends(get_db), token: str = Depends(JWTBearer())) -> ServiceProvider:
+    """
+    Get current service provider from JWT token
+    """
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token or expired token",
+        )
+    client_id = payload.get("client_id")
+    if not client_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token or expired token",
+        )
+    
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
+    if not service_provider:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service Provider not found",
+        )
+    return service_provider
+
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(JWTBearer())) -> User:
     """
     Get current user from JWT token
@@ -142,14 +167,11 @@ def decode_refresh_token(token: str):
         return None
 
 
-def generate_authorization_code(db, request: Request, client_id: str):
-    session_id = request.headers.get("session_id")
-    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
+def generate_authorization_code(db, user_id, client_id: str):
     service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
-    authorization_code_entry = AuthorizationCode(user_id = session.user_id, service_provider_id = service_provider.id)
+    authorization_code_entry = AuthorizationCode(user_id = user_id, service_provider_id = service_provider.id)
     db.add(authorization_code_entry)
     db.commit()
-    
     return authorization_code_entry.code
 
 
@@ -208,16 +230,9 @@ def user_consent(db, form_data,  request: Request):
     return True
 
 
-def verify_consent(db, form_data, request: Request):
-    session_id = request.headers.get("session_id")
-
-    if not session_id:
-        return False
-
-    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
-    user = db.query(User).filter(User.id == session.user_id).first()
-    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
-
+def verify_consent(db, client_id, user_id):
+    user = db.query(User).filter(User.id == user_id).first()
+    service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == client_id).first()
     for scope in service_provider.scopes:
         user_consent = db.query(UserConsent).filter(UserConsent.user_id == user.id, UserConsent.service_provider_id == service_provider.id, UserConsent.scope_id == scope.id).first()
         if not user_consent:
