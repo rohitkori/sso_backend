@@ -43,7 +43,7 @@ async def session_verification(
     session = verify_session(db, request)
     print("Session:", session)
     if not session:
-        return RedirectResponse(f"{Settings().sso_client_url}/login?redirect_uri={quote(form_data.redirect_uri, safe='')}&client_id={form_data.client_id}&response_type={form_data.response_type}&state={form_data.state}&scope={quote(form_data.scope, safe='')}", status_code=303)
+        return RedirectResponse(f"{Settings().sso_client_url}/login?redirect_url={quote(form_data.redirect_url, safe='')}&client_id={form_data.client_id}&response_type={form_data.response_type}&state={form_data.state}&scope={quote(form_data.scope, safe='')}", status_code=303)
     
     service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
     if not service_provider:
@@ -52,14 +52,14 @@ async def session_verification(
     if form_data.response_type != 'code':
         raise HTTPException(status_code=400, detail='Unsupported response_type')
 
-    if service_provider.redirect_url != form_data.redirect_uri:
-        raise HTTPException(status_code=400, detail='Invalid redirect_uri')
+    if service_provider.redirect_url != form_data.redirect_url:
+        raise HTTPException(status_code=400, detail='Invalid redirect_url')
     
     if verify_consent(db, form_data, request):
         authorization_code = generate_authorization_code(db, request, form_data.client_id)
-        redirect_url = form_data.redirect_uri + f"?auth_code={authorization_code}&state={form_data.state}"
+        redirect_url = form_data.redirect_url + f"?auth_code={authorization_code}&state={form_data.state}"
     else : 
-        redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_uri={quote(form_data.redirect_uri, safe='')}"
+        redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_url={quote(form_data.redirect_url, safe='')}"
 
     response = RedirectResponse(redirect_url, status_code=302)
 
@@ -92,7 +92,7 @@ def login_endpoint(
                         'client_id': service_provider.client_id, 
                         'state': form_data.state, 
                         'scope': scopes,
-                        'redirect_uri': service_provider.redirect_url,
+                        'redirect_url': service_provider.redirect_url,
                         'session_id': user_session.session_id}
     
     response = JSONResponse(content=response_message, status_code=200)

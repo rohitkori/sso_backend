@@ -46,11 +46,11 @@ def create_service_provider(service_provider: CreateServiceProviderSchema, db: S
 def authorize_service_provider(form_data: SessionSchema, request: Request = Request, db: Session = Depends(get_db)):
     session = verify_session(db, request)
     if not session:
-        redirect_uri = f"{Settings().sso_client_url}/login?redirect_uri={quote(form_data.redirect_uri, safe='')}"
-        redirect_uri += f"&client_id={form_data.client_id}&response_type={form_data.response_type}&state={form_data.state}&scope={quote(form_data.scope, safe='')}"
+        redirect_url = f"{Settings().sso_client_url}/login?redirect_url={quote(form_data.redirect_url, safe='')}"
+        redirect_url += f"&client_id={form_data.client_id}&response_type={form_data.response_type}&state={form_data.state}&scope={quote(form_data.scope, safe='')}"
 
-        print("Session not Valid. Redirecting to:", redirect_uri)
-        return RedirectResponse(redirect_uri, status_code=303)
+        print("Session not Valid. Redirecting to:", redirect_url)
+        return RedirectResponse(redirect_url, status_code=303)
 
     user_consent(db, form_data, request)
     
@@ -63,11 +63,11 @@ def authorize_service_provider(form_data: SessionSchema, request: Request = Requ
 
     authorization_code = generate_authorization_code(db, request, form_data.client_id)
 
-    if service_provider.redirect_url != form_data.redirect_uri:
-        raise HTTPException(status_code=400, detail='Invalid redirect_uri')
+    if service_provider.redirect_url != form_data.redirect_url:
+        raise HTTPException(status_code=400, detail='Invalid redirect_url')
 
     response_message = {
-        'redirect_uri': form_data.redirect_uri,
+        'redirect_url': form_data.redirect_url,
         'code': authorization_code,
         'state': form_data.state
     }

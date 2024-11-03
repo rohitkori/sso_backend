@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.post("/token/")
 def token_endpoint(form_data: PostTokenSchema, request: Request, db: Session = Depends(get_db)):
-    # Here recieve auth_code, grant_type ("authorization_code") and redirect_uri
+    # Here recieve auth_code, grant_type ("authorization_code") and redirect_url
     # In header recieve client_id and client_secret from "Authorization" header
     # In respone return access_token, refresh_token, expires_in
     auth_header = request.headers.get("Authorization")

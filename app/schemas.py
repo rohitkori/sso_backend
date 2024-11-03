@@ -36,7 +36,7 @@ class GetDeveloperKeysSchema(BaseModel):
 class LoginSchema(BaseModel):
     email: str
     password: str
-    redirect_uri: str
+    redirect_url: str
     response_type: str
     client_id: str
     state: str
@@ -47,14 +47,14 @@ class SessionSchema(BaseModel):
     response_type: str
     client_id: str
     state: str
-    redirect_uri: str
+    redirect_url: str
     scope: str
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
-    redirect_uri: str
+    redirect_url: str
 
 
 class VerifyCode(BaseModel):
