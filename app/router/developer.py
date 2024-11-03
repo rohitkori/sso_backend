@@ -34,43 +34,6 @@ def get_user_endpoint(
 ):
     return current_user
 
-@router.post("/token/refresh/")
-async def refresh_token_endpoint(
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    data = await request.json()
-    token = data.get("refresh_token")
-    if not token:
-        raise HTTPException(status_code=400, detail="Token is required")
-
-    payload = decode_refresh_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token or expired token",
-        )
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token or expired token",
-        )
-
-    user = get_user_by_id(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    access_token = create_access_token(data={"sub": user.id})
-    return {
-        "access_token": access_token,
-        "refresh_token": token,
-        "token_type": "bearer"
-    }
-
 
 @router.get("/keys/", response_model=List[GetDeveloperKeysSchema])
 def read_service_providers(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

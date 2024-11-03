@@ -3,7 +3,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from urllib.parse import quote
 
-from app.models import ServiceProvider, User, ClientScope, Scope
+from app.models import ServiceProvider, User, ClientScope, Scope, UserSession
 from app.schemas import CreateServiceProviderSchema, SessionSchema
 from app.config import Settings
 from app.database import get_db
@@ -60,6 +60,9 @@ def authorize_service_provider(form_data: SessionSchema, request: Request = Requ
 
     if form_data.response_type != 'code':
         raise HTTPException(status_code=400, detail='Unsupported response_type')
+    
+    session_id = request.headers.get("session_id")
+    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
 
     authorization_code = generate_authorization_code(db, session.user_id, form_data.client_id)
 

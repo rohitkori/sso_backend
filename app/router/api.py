@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -7,7 +7,7 @@ from datetime import datetime
 from app.schemas import PostTokenSchema
 from app.database import get_db
 from app.models import AuthorizationCode, ServiceProvider, User
-from app.utils import create_access_token, create_refresh_token
+from app.utils import create_access_token, create_refresh_token, decode_refresh_token, get_user_by_id
 import base64
 
 router = APIRouter()
@@ -46,3 +46,45 @@ def token_endpoint(form_data: PostTokenSchema, request: Request, db: Session = D
         return JSONResponse(content=response, status_code=200)
     else:
         raise HTTPException(status_code=400, detail="Invalid Authorization header")
+    
+
+@router.get("/token/refresh/")
+def refresh_token_endpoint(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    token = request.headers.get("refresh_token")
+    
+    if not token:
+        raise HTTPException(status_code=400, detail="Token is required")
+
+    payload = decode_refresh_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token or expired token",
+        )
+    user_id = payload.get("sub")
+    client_id = payload.get("client_id")
+    
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token or expired token",
+        )
+
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    access_token = create_access_token(data={"sub": user.id, "client_id": client_id})
+    refresh_token = create_refresh_token(data={"sub": user.id, "client_id": client_id})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": token,
+        "token_type": "bearer"
+    }

@@ -54,6 +54,9 @@ async def session_verification(
 
     if service_provider.redirect_url != form_data.redirect_url:
         raise HTTPException(status_code=400, detail='Invalid redirect_url')
+    
+    session_id = request.headers.get("session_id")
+    session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
 
     if verify_consent(db, form_data.client_id, session.user_id):
         authorization_code = generate_authorization_code(db, session.user_id, form_data.client_id)
@@ -165,6 +168,11 @@ def read_users_me(current_user: User = Depends(get_current_user), current_servic
             response_message["roll_no"] = current_user.roll_no
         elif scope == "phone":
             response_message["phone"] = current_user.phone_number
+        elif scope == "profile":
+            response_message["email"] = current_user.email
+            response_message["name"] = current_user.first_name + " " + current_user.last_name
+        elif scope == "openid":
+            continue
         else:
             raise HTTPException(status_code=400, detail="Invalid scope")
     response = JSONResponse(content=response_message, status_code=200)
