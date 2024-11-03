@@ -58,8 +58,9 @@ async def session_verification(
     if verify_consent(db, form_data, request):
         authorization_code = generate_authorization_code(db, request, form_data.client_id)
         redirect_url = form_data.redirect_url + f"?auth_code={authorization_code}&state={form_data.state}"
-    else : 
-        redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(form_data.scope, safe='')}&redirect_url={quote(form_data.redirect_url, safe='')}"
+    else :
+        scope = get_scopes_with_spaces(service_provider.id, db)
+        redirect_url = f"{Settings().sso_client_url}/consent?response_type={form_data.response_type}&client_id={form_data.client_id}&state={form_data.state}&scope={quote(scope, safe='')}&redirect_url={quote(form_data.redirect_url, safe='')}"
 
     response = RedirectResponse(redirect_url, status_code=302)
 

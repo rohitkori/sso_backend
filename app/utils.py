@@ -210,19 +210,18 @@ def user_consent(db, form_data,  request: Request):
 
 def verify_consent(db, form_data, request: Request):
     session_id = request.headers.get("session_id")
-    
+
     if not session_id:
         return False
-    
+
     session = db.query(UserSession).filter(UserSession.session_id == session_id).first()
     user = db.query(User).filter(User.id == session.user_id).first()
     service_provider = db.query(ServiceProvider).filter(ServiceProvider.client_id == form_data.client_id).first()
-    scopes = form_data.scope.split(" ")
-    
-    for scope in scopes:
-        if not db.query(UserConsent).filter(UserConsent.user_id == user.id and UserConsent.service_provider_id == service_provider.id and UserConsent.scope_id == scope.id).first():
+
+    for scope in service_provider.scopes:
+        user_consent = db.query(UserConsent).filter(UserConsent.user_id == user.id, UserConsent.service_provider_id == service_provider.id, UserConsent.scope_id == scope.id).first()
+        if not user_consent:
             return False
-        
     return True
 
 def get_scopes_with_spaces(service_provider_id: int, db: Session):
