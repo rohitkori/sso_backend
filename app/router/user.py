@@ -96,7 +96,7 @@ def login_endpoint(
     if verify_consent(db, form_data.client_id, user.id):
         authorization_code = generate_authorization_code(db, user.id, form_data.client_id)
         redirect_url = form_data.redirect_url + f"?auth_code={authorization_code}&state={form_data.state}"
-        return JSONResponse({"redirect_url": redirect_url, "should_redirect": True})
+        return JSONResponse({"redirect_url": redirect_url, "session_id": user_session.session_id, "should_redirect": True})
     else :
         scopes = get_scopes_with_spaces(service_provider.id, db)
         response_message = {'response_type': 'code',
